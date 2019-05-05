@@ -1,6 +1,8 @@
 package sendmail
 
 import (
+	"crypto/tls"
+	"net"
 	"net/textproto"
 )
 
@@ -12,19 +14,22 @@ type auth struct {
 
 // Client represents a client connection to an SMTP server
 type Client struct {
-	server   string
-	local    string
-	conn     *textproto.Conn
-	ext      map[string]string
-	authInfo *auth
+	serverHost string
+	serverPort int
+	local      string
+	conn       *textproto.Conn
+	nativeConn net.Conn
+	ext        map[string]string
+	authInfo   *auth
 }
 
 // Dial connects an SMTP server
-func Dial(addr string) (*Client, error) {
-	conn, err := textproto.Dial("tcp", addr)
+func Dial(host string, port int) (*Client, error) {
+	nativeConn, err := net.Dial("tcp", addr(host, port))
 	if err != nil {
 		return nil, err
 	}
+	conn := textproto.NewConn(nativeConn)
 
 	if _, _, err = conn.ReadResponse(220); err != nil {
 		conn.Close()
@@ -32,11 +37,13 @@ func Dial(addr string) (*Client, error) {
 	}
 
 	c := &Client{
-		server:   addr,
-		local:    "localhost",
-		conn:     conn,
-		ext:      make(map[string]string),
-		authInfo: &auth{},
+		serverHost: host,
+		serverPort: port,
+		local:      "localhost",
+		nativeConn: nativeConn,
+		conn:       conn,
+		ext:        make(map[string]string),
+		authInfo:   &auth{},
 	}
 
 	return c, nil
@@ -58,12 +65,17 @@ func (c *Client) Quit() error {
 
 // SetAuth sets authentication infomation
 func (c *Client) SetAuth(user, token string) {
-	c.authInfo = &auth{"", user, token}
+	c.authInfo.user = user
+	c.authInfo.password = token
 }
 
 // Send sends mail
 func (c *Client) Send(mail *Mail) {
 	c.hello()
+	if _, ok := c.ext["STARTTLS"]; ok {
+		config := &tls.Config{ServerName: c.serverHost}
+		c.startTLS(config)
+	}
 	c.auth()
 	c.mail()
 	c.rcpt(mail.headers["to"])
