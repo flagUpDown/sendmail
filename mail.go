@@ -35,6 +35,6 @@ func (m *Mail) toString() string {
 	for k, v := range m.headers {
 		message += k + ":" + v + "\r\n"
 	}
-	message += "\r\n\r\n" + m.content
+	message += "\r\n" + m.content
 	return message
 }
