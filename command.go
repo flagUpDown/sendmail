@@ -1,8 +1,10 @@
 package sendmail
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
+	"net/textproto"
 	"strings"
 )
 
@@ -111,6 +113,19 @@ func (c *Client) data(data string) error {
 	_, _, err = c.cmd(0, data)
 RET:
 	return err
+}
+
+func (c *Client) startTLS(config *tls.Config) error {
+	if err := c.hello(); err != nil {
+		return err
+	}
+	_, _, err := c.cmd(220, "STARTTLS")
+	if err != nil {
+		return err
+	}
+	c.nativeConn = tls.Client(c.nativeConn, config)
+	c.conn = textproto.NewConn(c.nativeConn)
+	return c.ehlo()
 }
 
 func (c *Client) cmd(expectCode int, format string, args ...interface{}) (int, string, error) {
