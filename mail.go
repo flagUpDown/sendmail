@@ -33,8 +33,8 @@ func (m *Mail) setHeader(field, value string) {
 func (m *Mail) toString() string {
 	message := ""
 	for k, v := range m.headers {
-		message += k + ":" + v + "\r\n"
+		message += k + ":" + v + CRLF
 	}
-	message += "\r\n" + m.content
+	message += CRLF + m.content
 	return message
 }

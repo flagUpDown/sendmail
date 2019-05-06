@@ -109,7 +109,7 @@ func (c *Client) data(data string) error {
 	if err != nil {
 		goto RET
 	}
-	data += "\r\n."
+	data += CRLF + "."
 	_, _, err = c.cmd(0, data)
 RET:
 	return err
