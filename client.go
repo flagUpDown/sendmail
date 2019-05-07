@@ -78,6 +78,15 @@ func (c *Client) Send(mail *Mail) {
 	}
 	c.auth()
 	c.mail()
+	for email := range mail.recipients {
+		c.rcpt(email)
+	}
+	for email := range mail.carbonCopys {
+		c.rcpt(email)
+	}
+	for email := range mail.blindCarbonCopys {
+		c.rcpt(email)
+	}
 	c.rcpt(mail.headers["to"])
 	c.data(mail.toString())
 }
