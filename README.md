@@ -34,10 +34,10 @@ mail.SetContent("<h1>hello word</h1>", true) // 设置邮件内容，可选择�
 mail.AddAttachment("/path/filename.ext", "file name") // 添加邮件附件
 ```
 
-连接远程smtp服务器
+连接远程smtp服务器，可选择是否使用TLS连接。但即使是普通连接，当发现服务器端存在`STARTTLS`扩展，仍然会启用TLS连接
 
 ```go
-c, _ := sendmail.Dial("smtp.host.com", 25)
+c, _ := sendmail.Dial("smtp.host.com", 25, false)
 ```
 
 设置认证所需的用户名和口令
