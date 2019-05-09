@@ -1,7 +1,6 @@
 package sendmail
 
 import (
-	"encoding/base64"
 	"io/ioutil"
 )
 
@@ -77,7 +76,7 @@ func (m *Mail) createPlainBody() string {
 	body := ""
 	body += "Content-Type: text/plain; charset=\"UTF-8\"" + CRLF
 	body += "Content-Transfer-Encoding: base64" + CRLF + CRLF
-	body += base64.StdEncoding.EncodeToString([]byte(m.content)) + CRLF
+	body += base64Encode([]byte(m.content)) + CRLF
 	return body
 }
 
@@ -92,7 +91,7 @@ func (m *Mail) createHTMLBody() string {
 	body += startBoundary
 	body += "Content-Type: text/html; charset=\"UTF-8\"" + CRLF
 	body += "Content-Transfer-Encoding: base64" + CRLF + CRLF
-	body += base64.StdEncoding.EncodeToString([]byte(m.content)) + CRLF + CRLF
+	body += base64Encode([]byte(m.content)) + CRLF + CRLF
 	body += endBoundary
 	return body
 }
@@ -119,7 +118,7 @@ func (m *Mail) createBodyWithAttachment() string {
 		body += "Content-Type: application/octet-stream; name=\"" + name + "\"" + CRLF
 		body += "Content-Transfer-Encoding: base64" + CRLF
 		body += "Content-Disposition: attachment; filename=\"" + name + "\"" + CRLF + CRLF
-		body += base64.StdEncoding.EncodeToString(data) + CRLF + CRLF
+		body += base64Encode(data) + CRLF + CRLF
 	}
 	body += endBoundary
 	return body

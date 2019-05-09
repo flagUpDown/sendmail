@@ -2,7 +2,6 @@ package sendmail
 
 import (
 	"crypto/tls"
-	"encoding/base64"
 	"errors"
 	"net/textproto"
 	"strings"
@@ -44,7 +43,7 @@ func (c *Client) helo() error {
 
 func (c *Client) plainAuth(identity, user, token string) error {
 	resp := identity + "\x00" + user + "\x00" + token
-	resp = base64.StdEncoding.EncodeToString([]byte(resp))
+	resp = base64Encode([]byte(resp))
 	_, _, err := c.cmd(235, "AUTH PLAIN %s", resp)
 	if err != nil {
 		goto RET
@@ -71,12 +70,12 @@ func (c *Client) loginAuth(user, password string) error {
 	if err != nil {
 		goto RET
 	}
-	user = base64.StdEncoding.EncodeToString([]byte(user))
+	user = base64Encode([]byte(user))
 	_, _, err = c.cmd(334, user)
 	if err != nil {
 		goto RET
 	}
-	password = base64.StdEncoding.EncodeToString([]byte(password))
+	password = base64Encode([]byte(password))
 	_, _, err = c.cmd(235, password)
 	if err != nil {
 		goto RET

@@ -21,8 +21,12 @@ func addr(host string, port int) string {
 	return fmt.Sprintf("%s:%d", host, port)
 }
 
+func base64Encode(src []byte) string {
+	return base64.StdEncoding.EncodeToString(src)
+}
+
 func utf8B(str string) string {
-	return fmt.Sprintf("=?utf-8?B?%s?=", base64.StdEncoding.EncodeToString([]byte(str)))
+	return fmt.Sprintf("=?utf-8?B?%s?=", base64Encode([]byte(str)))
 }
 
 func contactEmailName(email, name string) string {
