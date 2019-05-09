@@ -1,6 +1,7 @@
 package sendmail
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strings"
 )
@@ -18,4 +19,26 @@ func validateLine(line string) bool {
 
 func addr(host string, port int) string {
 	return fmt.Sprintf("%s:%d", host, port)
+}
+
+func utf8B(str string) string {
+	return fmt.Sprintf("=?utf-8?B?%s?=", base64.StdEncoding.EncodeToString([]byte(str)))
+}
+
+func contactEmailName(email, name string) string {
+	if name != "" {
+		name = utf8B(name) + " "
+	}
+	return name + "<" + email + ">"
+}
+
+func mergeEmails(emails map[string]string) string {
+	result := ""
+	for email, name := range emails {
+		result += contactEmailName(email, name) + ", "
+	}
+	if result != "" {
+		result = result[0 : len(result)-2]
+	}
+	return result
 }
