@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"net/textproto"
 	"strings"
 )
@@ -137,7 +136,5 @@ func (c *Client) cmd(expectCode int, format string, args ...interface{}) (int, s
 	c.conn.StartResponse(id)
 	defer c.conn.EndResponse(id)
 	code, msg, err := c.conn.ReadResponse(expectCode)
-	fmt.Printf(format+"\n", args...)
-	fmt.Println(msg, err)
 	return code, msg, err
 }

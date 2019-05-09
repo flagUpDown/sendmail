@@ -1,12 +1,16 @@
 package sendmail
 
-import "encoding/base64"
+import (
+	"encoding/base64"
+	"io/ioutil"
+)
 
 // Mail containes an envelope and a content
 type Mail struct {
 	recipients       map[string]string
 	carbonCopys      map[string]string
 	blindCarbonCopys map[string]string
+	attachments      map[string]string
 	headers          map[string]string
 	content          string
 	isHTML           bool
@@ -15,6 +19,7 @@ type Mail struct {
 // NewMail returns new mail
 func NewMail() *Mail {
 	m := &Mail{
+		make(map[string]string),
 		make(map[string]string),
 		make(map[string]string),
 		make(map[string]string),
@@ -59,6 +64,11 @@ func (m *Mail) SetContent(content string, isHTML bool) {
 	m.content = content
 }
 
+// AddAttachment adds mail attachment by file path
+func (m *Mail) AddAttachment(path, name string) {
+	m.attachments[name] = path
+}
+
 func (m *Mail) setHeader(field, value string) {
 	m.headers[field] = value
 }
@@ -72,7 +82,7 @@ func (m *Mail) createPlainBody() string {
 }
 
 func (m *Mail) createHTMLBody() string {
-	const boundary = "_boundary_by_flagupdown_sendmail"
+	const boundary = "_boundary_by_alternative_sendmail_"
 	const startBoundary = "--" + boundary + CRLF
 	const endBoundary = "--" + boundary + "--" + CRLF
 	body := ""
@@ -81,12 +91,48 @@ func (m *Mail) createHTMLBody() string {
 	body += m.createPlainBody() + CRLF
 	body += startBoundary
 	body += "Content-Type: text/html; charset=\"UTF-8\"" + CRLF
-	body += "Content-Transfer-Encoding: base64" + CRLF
-	body += CRLF
-	body += base64.StdEncoding.EncodeToString([]byte(m.content)) + CRLF
-	body += CRLF
+	body += "Content-Transfer-Encoding: base64" + CRLF + CRLF
+	body += base64.StdEncoding.EncodeToString([]byte(m.content)) + CRLF + CRLF
 	body += endBoundary
 	return body
+}
+
+func (m *Mail) createBodyWithAttachment() string {
+	const boundary = "_boundary_by_mixed_sendmail_"
+	const startBoundary = "--" + boundary + CRLF
+	const endBoundary = "--" + boundary + "--" + CRLF
+	body := ""
+	body += "Content-Type: multipart/mixed; boundary=\"" + boundary + "\"" + CRLF + CRLF
+	body += startBoundary
+	if m.isHTML {
+		body += m.createHTMLBody()
+	} else {
+		body += m.createPlainBody()
+	}
+	for name, path := range m.attachments {
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		body += CRLF
+		body += startBoundary
+		body += "Content-Type: application/octet-stream; name=\"" + name + "\"" + CRLF
+		body += "Content-Transfer-Encoding: base64" + CRLF
+		body += "Content-Disposition: attachment; filename=\"" + name + "\"" + CRLF + CRLF
+		body += base64.StdEncoding.EncodeToString(data) + CRLF + CRLF
+	}
+	body += endBoundary
+	return body
+}
+
+func (m *Mail) createBody() string {
+	if len(m.attachments) != 0 {
+		return m.createBodyWithAttachment()
+	} else if m.isHTML {
+		return m.createHTMLBody()
+	} else {
+		return m.createPlainBody()
+	}
 }
 
 func (m *Mail) toString() string {
@@ -97,11 +143,7 @@ func (m *Mail) toString() string {
 		message += k + ": " + v + CRLF
 	}
 
-	if m.isHTML {
-		message += m.createHTMLBody()
-	} else {
-		message += m.createPlainBody()
-	}
+	message += m.createBody()
 
 	return message
 }
