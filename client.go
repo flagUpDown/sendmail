@@ -17,6 +17,7 @@ type Client struct {
 	serverHost string
 	serverPort int
 	local      string
+	isTLS      bool
 	conn       *textproto.Conn
 	nativeConn net.Conn
 	ext        map[string]string
@@ -24,11 +25,17 @@ type Client struct {
 }
 
 // Dial connects an SMTP server
-func Dial(host string, port int) (*Client, error) {
+func Dial(host string, port int, isTLS bool) (*Client, error) {
 	nativeConn, err := net.Dial("tcp", addr(host, port))
 	if err != nil {
 		return nil, err
 	}
+
+	if isTLS {
+		config := &tls.Config{ServerName: host}
+		nativeConn = tls.Client(nativeConn, config)
+	}
+
 	conn := textproto.NewConn(nativeConn)
 
 	if _, _, err = conn.ReadResponse(220); err != nil {
@@ -40,6 +47,7 @@ func Dial(host string, port int) (*Client, error) {
 		serverHost: host,
 		serverPort: port,
 		local:      "localhost",
+		isTLS:      isTLS,
 		nativeConn: nativeConn,
 		conn:       conn,
 		ext:        make(map[string]string),
@@ -72,7 +80,7 @@ func (c *Client) SetAuth(user, token string) {
 // Send sends mail
 func (c *Client) Send(mail *Mail) {
 	c.hello()
-	if _, ok := c.ext["STARTTLS"]; ok {
+	if _, ok := c.ext["STARTTLS"]; ok && !c.isTLS {
 		config := &tls.Config{ServerName: c.serverHost}
 		c.startTLS(config)
 	}
