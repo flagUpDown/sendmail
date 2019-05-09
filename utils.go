@@ -9,6 +9,10 @@ import (
 // CRLF represents Carriage-Return Line-Feed
 const CRLF = "\r\n"
 
+var (
+	base64Encode = base64.StdEncoding.EncodeToString
+)
+
 func validateLine(line string) bool {
 	flag := true
 	if line == "" || strings.ContainsAny(line, "\n\r") {
@@ -19,10 +23,6 @@ func validateLine(line string) bool {
 
 func addr(host string, port int) string {
 	return fmt.Sprintf("%s:%d", host, port)
-}
-
-func base64Encode(src []byte) string {
-	return base64.StdEncoding.EncodeToString(src)
 }
 
 func utf8B(str string) string {
