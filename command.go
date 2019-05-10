@@ -3,6 +3,7 @@ package sendmail
 import (
 	"crypto/tls"
 	"errors"
+	"io"
 	"net/textproto"
 	"strings"
 )
@@ -45,10 +46,6 @@ func (c *Client) plainAuth(identity, user, token string) error {
 	resp := identity + "\x00" + user + "\x00" + token
 	resp = base64Encode([]byte(resp))
 	_, _, err := c.cmd(235, "AUTH PLAIN %s", resp)
-	if err != nil {
-		goto RET
-	}
-RET:
 	return err
 }
 
@@ -77,9 +74,6 @@ func (c *Client) loginAuth(user, password string) error {
 	}
 	password = base64Encode([]byte(password))
 	_, _, err = c.cmd(235, password)
-	if err != nil {
-		goto RET
-	}
 RET:
 	return err
 }
@@ -115,25 +109,42 @@ RET:
 }
 
 func (c *Client) startTLS(config *tls.Config) error {
-	if err := c.hello(); err != nil {
-		return err
-	}
-	_, _, err := c.cmd(220, "STARTTLS")
+	err := c.hello()
 	if err != nil {
-		return err
+		goto RET
+	}
+
+	if _, _, err = c.cmd(220, "STARTTLS"); err != nil {
+		goto RET
 	}
 	c.nativeConn = tls.Client(c.nativeConn, config)
 	c.conn = textproto.NewConn(c.nativeConn)
-	return c.ehlo()
+	err = c.hello()
+RET:
+	return err
 }
 
 func (c *Client) cmd(expectCode int, format string, args ...interface{}) (int, string, error) {
+	var code int
+	var msg string
+CMD:
 	id, err := c.conn.Cmd(format, args...)
 	if err != nil {
-		return 0, "", err
+		goto RET
 	}
 	c.conn.StartResponse(id)
 	defer c.conn.EndResponse(id)
-	code, msg, err := c.conn.ReadResponse(expectCode)
+	code, msg, err = c.conn.ReadResponse(expectCode)
+	if err == io.EOF {
+		err = c.ReDial()
+		if err != nil {
+			goto RET
+		}
+		goto CMD
+	} else if err != nil {
+		goto RET
+	}
+
+RET:
 	return code, msg, err
 }

@@ -15,7 +15,7 @@ var (
 
 func validateLine(line string) bool {
 	flag := true
-	if line == "" || strings.ContainsAny(line, "\n\r") {
+	if line == "" || strings.ContainsAny(line, CRLF) {
 		flag = false
 	}
 	return flag

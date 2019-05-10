@@ -57,6 +57,28 @@ func Dial(host string, port int, isTLS bool) (*Client, error) {
 	return c, nil
 }
 
+// ReDial reconnects an SMTP server
+func (c *Client) ReDial() error {
+	var err error
+	c.nativeConn, err = net.Dial("tcp", addr(c.serverHost, c.serverPort))
+	if err != nil {
+		return err
+	}
+
+	if c.isTLS {
+		config := &tls.Config{ServerName: c.serverHost}
+		c.nativeConn = tls.Client(c.nativeConn, config)
+	}
+
+	c.conn = textproto.NewConn(c.nativeConn)
+
+	if _, _, err = c.conn.ReadResponse(220); err != nil {
+		c.conn.Close()
+		return err
+	}
+	return err
+}
+
 // Close closes the connection
 func (c *Client) Close() error {
 	return c.conn.Close()
@@ -78,23 +100,38 @@ func (c *Client) SetAuth(user, token string) {
 }
 
 // Send sends mail
-func (c *Client) Send(mail *Mail) {
-	c.hello()
+func (c *Client) Send(mail *Mail) error {
+	var emailList []string
+	err := c.hello()
+	if err != nil {
+		goto RET
+	}
 	if _, ok := c.ext["STARTTLS"]; ok && !c.isTLS {
 		config := &tls.Config{ServerName: c.serverHost}
-		c.startTLS(config)
+		err = c.startTLS(config)
+		if err != nil {
+			goto RET
+		}
 	}
-	c.auth()
-	c.mail()
-	for email := range mail.recipients {
-		c.rcpt(email)
+	err = c.auth()
+	if err != nil {
+		goto RET
 	}
-	for email := range mail.carbonCopys {
-		c.rcpt(email)
+	err = c.mail()
+	if err != nil {
+		goto RET
 	}
-	for email := range mail.blindCarbonCopys {
-		c.rcpt(email)
+	emailList, err = mail.getAllRcpt()
+	if err != nil {
+		goto RET
 	}
-	c.rcpt(mail.headers["to"])
-	c.data(mail.toString())
+	for _, email := range emailList {
+		err = c.rcpt(email)
+		if err != nil {
+			goto RET
+		}
+	}
+	err = c.data(mail.toString())
+RET:
+	return err
 }
