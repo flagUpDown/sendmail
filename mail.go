@@ -1,6 +1,7 @@
 package sendmail
 
 import (
+	"errors"
 	"io/ioutil"
 )
 
@@ -66,6 +67,26 @@ func (m *Mail) SetContent(content string, isHTML bool) {
 // AddAttachment adds mail attachment by file path
 func (m *Mail) AddAttachment(path, name string) {
 	m.attachments[name] = path
+}
+
+func (m *Mail) getAllRcpt() ([]string, error) {
+	length := len(m.recipients) + len(m.carbonCopys) + len(m.blindCarbonCopys)
+	emailList := make([]string, length)
+	err := errors.New("sendmail: recipient is empty")
+	for email := range m.recipients {
+		length--
+		emailList[length] = email
+		err = nil
+	}
+	for email := range m.carbonCopys {
+		length--
+		emailList[length] = email
+	}
+	for email := range m.blindCarbonCopys {
+		length--
+		emailList[length] = email
+	}
+	return emailList, err
 }
 
 func (m *Mail) setHeader(field, value string) {
